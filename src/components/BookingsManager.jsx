@@ -5,9 +5,7 @@ export function BookingsManager({ tenant }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchBookings()
-  }, [tenant.id])
+  useEffect(() => { fetchBookings() }, [tenant.id])
 
   async function fetchBookings() {
     const { data, error } = await supabase
@@ -15,63 +13,60 @@ export function BookingsManager({ tenant }) {
       .select('*')
       .eq('tenant_id', tenant.id)
       .order('booking_date', { ascending: true })
-
     if (!error) setBookings(data)
     setLoading(false)
   }
 
   async function updateStatus(id, status) {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status })
-      .eq('id', id)
-
-    if (!error) fetchBookings()
+    await supabase.from('bookings').update({ status }).eq('id', id)
+    fetchBookings()
   }
 
-  if (loading) return <p>Loading bookings...</p>
+  const statusColors = {
+    confirmed: 'bg-green-50 text-green-700 border-green-100',
+    cancelled: 'bg-red-50 text-red-600 border-red-100',
+    completed: 'bg-zinc-100 text-zinc-500 border-zinc-200',
+  }
+
+  if (loading) return <p className="text-sm text-zinc-400">Loading bookings...</p>
+
+  if (bookings.length === 0) return (
+    <p className="text-sm text-zinc-400">No bookings yet. They'll appear here when customers reserve a table.</p>
+  )
 
   return (
-    <div>
-      {bookings.length === 0 ? (
-        <p>No bookings yet.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Party</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.map((booking) => (
-              <tr key={booking.id}>
-                <td>{booking.customer_name}</td>
-                <td>{booking.booking_date}</td>
-                <td>{booking.booking_time}</td>
-                <td>{booking.party_size}</td>
-                <td>{booking.status}</td>
-                <td>
-                  {booking.status === 'confirmed' && (
-                    <>
-                      <button onClick={() => updateStatus(booking.id, 'completed')}>
-                        Complete
-                      </button>
-                      <button onClick={() => updateStatus(booking.id, 'cancelled')}>
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <div className="divide-y divide-zinc-100">
+      {bookings.map((booking) => (
+        <div key={booking.id} className="py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-zinc-900">{booking.customer_name}</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {booking.booking_date} at {booking.booking_time} · {booking.party_size} guests
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${statusColors[booking.status]}`}>
+              {booking.status}
+            </span>
+            {booking.status === 'confirmed' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => updateStatus(booking.id, 'completed')}
+                  className="text-xs text-zinc-500 hover:text-zinc-800 font-medium transition"
+                >
+                  Complete
+                </button>
+                <button
+                  onClick={() => updateStatus(booking.id, 'cancelled')}
+                  className="text-xs text-red-400 hover:text-red-600 font-medium transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
